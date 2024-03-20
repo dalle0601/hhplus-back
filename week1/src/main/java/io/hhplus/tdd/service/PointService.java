@@ -19,7 +19,7 @@ public class PointService {
         this.pointHistoryTable = pointHistoryTable;
     }
 
-    public UserPoint chargePoint(Long userId, Long amount)  {
+    public synchronized UserPoint chargePoint(Long userId, Long amount)  {
         validataionAmount(amount);
         UserPoint originUserPoint = userPointTable.selectById(userId);
         UserPoint userPoint = userPointTable.insertOrUpdate(userId, originUserPoint.point() + amount);
@@ -27,7 +27,7 @@ public class PointService {
         return userPoint;
     }
 
-    public UserPoint usePoint(Long userId, Long amount) {
+    public synchronized UserPoint usePoint(Long userId, Long amount) {
         validataionAmount(amount);
         UserPoint currentUserPoint = userPointTable.selectById(userId);
         if (currentUserPoint.point() < amount) {

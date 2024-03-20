@@ -11,12 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
 class PointServiceTest {
 
     /*
@@ -28,11 +30,8 @@ class PointServiceTest {
     - 동시에 여러 건의 포인트 충전, 이용 요청이 들어올 경우 순차적으로 처리되어야 합니다.
      */
 
-    @Autowired
     private PointService pointService;
-    @Autowired
     UserPointTable userPointTable;
-    @Autowired
     PointHistoryTable pointHistoryTable;
     private static final long TEST_USER = 1;
 
@@ -42,11 +41,11 @@ class PointServiceTest {
     @BeforeEach
     void beforeEach() {
         // 사용할 테이블 초기화
-//        userPointTable = new UserPointTable();
-//        pointHistoryTable = new PointHistoryTable();
-//
+        userPointTable = new UserPointTable();
+        pointHistoryTable = new PointHistoryTable();
+
 //        // PointService 생성 및 초기 데이터 설정
-//        pointService = new PointService(userPointTable, pointHistoryTable);
+        pointService = new PointService(userPointTable, pointHistoryTable);
         pointService.chargePoint(TEST_USER, 1000L);
     }
 
@@ -133,55 +132,54 @@ class PointServiceTest {
     @DisplayName("동시에 여러 건의 포인트 충전 요청이 들어올 경우 순차적으로 처리되어야 합니다.")
     @Test
     void testConcurrentCharge() throws InterruptedException {
-        final int numThreads = 5;
+        int threadCnt = 6;
+        CountDownLatch countDownLatch = new CountDownLatch(threadCnt);
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCnt);
 
-        Object lockArea = new Object();
-        Thread[] threads = new Thread[numThreads];
-
-        // synchronized 를 통해 해당 블록을 동기화 하고
-        // lockArea 객체를 통해 락을 획득한다
-        for (int i = 0; i < numThreads; i++) {
-            threads[i] = new Thread(() -> {
-                synchronized (lockArea) {
-                    long amount = 100L;
-                    pointService.chargePoint(1L, amount);
-                    totalAmounts += amount;
+        // 각 쓰레드에서 충전 요청 수행
+        for (int i = 0; i < threadCnt; i++) {
+            executorService.submit(() -> {
+                try {
+                    pointService.chargePoint(TEST_USER, 100L); // 충전할 금액
+                } finally {
+                    countDownLatch.countDown();
                 }
             });
-            // 동기화된 블록 내의 코드가 실행
-            threads[i].start();
         }
-        //스레드가 종료될 때까지 기다림
-        for (Thread thread : threads) {
-            thread.join();
-        }
-        // 모든 요청이 처리된 후에 사용자의 최종 포인트를 확인하여 순차적으로 처리되었는지 검증
-        UserPoint finalUserPoint = pointService.getUserPoint(1L);
-        assertThat(finalUserPoint.point()).isEqualTo(1000L + totalAmounts);
+        // 모든 요청이 완료될 때까지 대기
+        countDownLatch.await();
+        // 모든 요청이 순차적으로 처리되었는지 확인
+        UserPoint userPoint = pointService.getUserPoint(TEST_USER);
+        long expectedPoint = 1000 + (threadCnt * 100L);
+        assertThat(userPoint.point()).isEqualTo(expectedPoint);
+        // 쓰레드 풀 종료
+        executorService.shutdown();
     }
 
     @DisplayName("동시에 여러 건의 포인트 사용 요청이 들어올 경우 순차적으로 처리되어야 합니다.")
     @Test
     void testConcurrentUse() throws InterruptedException {
-        final int numThreads = 5;
+        int threadCnt = 6;
+        CountDownLatch countDownLatch = new CountDownLatch(threadCnt);
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCnt);
 
-        Object lockArea = new Object();
-        Thread[] threads = new Thread[numThreads];
-
-        for (int i = 0; i < numThreads; i++) {
-            threads[i] = new Thread(() -> {
-                synchronized (lockArea) {
-                    long amount = 100L;
-                    pointService.usePoint(1L, amount);
-                    totalAmounts += amount;
+        // 각 쓰레드에서 충전 요청 수행
+        for (int i = 0; i < threadCnt; i++) {
+            executorService.submit(() -> {
+                try {
+                    pointService.usePoint(TEST_USER, 100L); // 충전할 금액
+                } finally {
+                    countDownLatch.countDown();
                 }
             });
-            threads[i].start();
         }
-        for (Thread thread : threads) {
-            thread.join();
-        }
-        UserPoint finalUserPoint = pointService.getUserPoint(1L);
-        assertThat(finalUserPoint.point()).isEqualTo(1000L - totalAmounts);
+        // 모든 요청이 완료될 때까지 대기
+        countDownLatch.await();
+        // 모든 요청이 순차적으로 처리되었는지 확인
+        UserPoint userPoint = pointService.getUserPoint(TEST_USER);
+        long expectedPoint = 1000 - (threadCnt * 100L);
+        assertThat(userPoint.point()).isEqualTo(expectedPoint);
+        // 쓰레드 풀 종료
+        executorService.shutdown();
     }
 }
