@@ -19,14 +19,16 @@ public class PointService {
         this.pointHistoryTable = pointHistoryTable;
     }
 
-    public synchronized UserPoint chargePoint(Long userId, Long amount)  {
+    public UserPoint chargePoint(Long userId, Long amount)  {
+        validataionAmount(amount);
         UserPoint originUserPoint = userPointTable.selectById(userId);
         UserPoint userPoint = userPointTable.insertOrUpdate(userId, originUserPoint.point() + amount);
         pointHistoryTable.insert(userId, amount, TransactionType.CHARGE, System.currentTimeMillis());
         return userPoint;
     }
 
-    public synchronized UserPoint usePoint(Long userId, Long amount) {
+    public UserPoint usePoint(Long userId, Long amount) {
+        validataionAmount(amount);
         UserPoint currentUserPoint = userPointTable.selectById(userId);
         if (currentUserPoint.point() < amount) {
             throw new IllegalArgumentException("잔고가 부족할 경우, 포인트 사용은 실패하여야 합니다.");
@@ -42,6 +44,12 @@ public class PointService {
 
     public List<PointHistory> getHistory(Long id) {
         return pointHistoryTable.selectAllByUserId(id);
+    }
+
+    public void validataionAmount(Long amount) {
+        if(amount <= 0) {
+            throw new IllegalArgumentException("0 혹은 음수의 포인트 입력");
+        }
     }
 
 }

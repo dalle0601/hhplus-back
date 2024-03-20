@@ -35,4 +35,9 @@ public class PointHistoryTable {
 
         }
     }
+
+
+    public void clearStore() {
+        table.clear();
+    }
 }
