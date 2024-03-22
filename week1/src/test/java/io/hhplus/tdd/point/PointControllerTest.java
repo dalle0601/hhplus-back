@@ -37,7 +37,7 @@ public class PointControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(pointController).build();
     }
 
-    @DisplayName("특정 유저의 포인트 충전, 사용 내역 조회 / GET > {id}/histories")
+    @DisplayName("특정 유저의 포인트를 조회 / GET > {id}")
     @Test
     void testGetUserPoint() throws Exception {
         Long userId = 1L;
