@@ -1,9 +1,14 @@
 package org.example.lectureapplication.domain;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+@Entity
 public class ApplyLecture {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
+    @Column(name="user_id")
     private String userId;
     private LocalDateTime applyLectureTime;
     private String applyLectureStatus;
@@ -13,6 +18,10 @@ public class ApplyLecture {
         this.userId = userId;
         this.applyLectureTime = applyLectureTime;
         this.applyLectureStatus = applyLectureStatus;
+    }
+
+    public ApplyLecture() {
+
     }
 
     public long getId() {
