@@ -12,8 +12,7 @@ import java.util.Optional;
 
 @Service
 public class LectureService {
-//    private final LectureRepository lectureRepository= new MemoryLectureRepository();
-private final LectureRepository lectureRepository;
+    private final LectureRepository lectureRepository;
 
     @Autowired
     public LectureService(LectureRepository lectureRepository) {
